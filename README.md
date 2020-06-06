@@ -22,4 +22,4 @@ This system is really great for keeping short notes.
 #Test
 ```
 
-o list all existing tags, type `zk tags`. To print all Zettel with a certain tag, type `zk browse [tag]`.
+To list all existing tags, type `zk tags`. To print all Zettel with a certain tag, type `zk browse [tag]`.
