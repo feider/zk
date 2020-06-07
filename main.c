@@ -346,16 +346,25 @@ void browse_tag(Tag_Array * tags, Zettel_Array * zets, const char * tag_str)
 
     size_t nz = tag->num_zettel;
     int zet_id;
+    size_t ztag_id;
+    Tag * ztag;
     for(size_t z = 0; z<nz; z++)
     {
         zet_id = tag->zettel[z];
         zet = zets->array[zet_id];
         printf("Zettel %zu of %zu:\n", z+1, nz);
-        printf("%s\n\n", zet->text);
+        printf("%s\nTags: ", zet->text);
+
+        // print tags
+        for(size_t t = 0; t<zet->num_tags; t++)
+        {
+            ztag_id = zet->tags[t];
+            ztag = tags->array[ztag_id];
+            printf("[%s] ", ztag->title);
+        }
+        printf("\n\n");
+
     }
-
-
-
 }
 
 int main(int argc, char * argv[])
