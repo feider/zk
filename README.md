@@ -24,4 +24,4 @@ This system is really great for keeping short notes.
 
 To list all existing tags, type `zk tags`. To print all Zettel with a certain tag, type `zk browse [tag]`.
 
-Instead of `zk add`, which opens an editor from the zk software, you could also use something like ``` vim ~/\`date +%Y_%m_%d_%H_%M_%S` ```
+Instead of `zk add`, which opens an editor from the zk software, you could also use something like ``` vim ~/`date +%Y_%m_%d_%H_%M_%S` ```
