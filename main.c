@@ -4,12 +4,25 @@
 #include <time.h>
 #include <string.h>
 #include <stdint.h>
+#include <ncurses.h>
+
+#include <pwd.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 
 // configuration
 #include "config.h"
 
+// init reader
+#include "cinireader.h"
+
 #define DEBUG 0
+
+#define true 1
+#define false 0
+
+
 int print_zettel_folder(){ DIR *d; struct dirent *dir;
     d = opendir(zettelkasten_path);
     if(d){
@@ -34,8 +47,7 @@ int add_zettel(){
     char zettel_name[20];
     time(&rawtime);
     timeinfo = localtime(&rawtime);
-
-    strftime(zettel_name, 20, "%Y_%m_%d_%H_%M_%S", timeinfo);
+strftime(zettel_name, 20, "%Y_%m_%d_%H_%M_%S", timeinfo);
     printf("%s\n", zettel_name);
     char * full_command = malloc(strlen(editor_command) + 1 + strlen(zettelkasten_path) + 1 + strlen(zettel_name) + 1);
     full_command[0] = 0;
@@ -136,8 +148,9 @@ void print_tags(Tag_Array * tags)
     for(size_t i = 0; i<tags->used; i++)
     {
         //printf("Tag %zu: %s, Number of Zettel: %zu\n", i, tags->array[i]->title, tags->array[i]->num_zettel);
-        printf("%s\n", tags->array[i]->title);
+        printf("[%s] ", tags->array[i]->title);
     }
+    printf("\n");
 }
 
 
@@ -367,8 +380,149 @@ void browse_tag(Tag_Array * tags, Zettel_Array * zets, const char * tag_str)
     }
 }
 
+typedef enum
+{
+    TAG_CHOICE
+} C_Fsm;
+
+typedef struct{
+    int running;
+    int sx, sy;
+    C_Fsm fsm;
+    int cursor_y;
+    int tag_window;
+
+} C_State;
+
+int c_init(C_State * c_state)
+{
+    initscr();
+    getmaxyx(stdscr, c_state->sy, c_state->sx);
+    curs_set(false);
+    c_state->running = true;
+    c_state->fsm = TAG_CHOICE;
+    c_state->cursor_y = 0;
+    c_state->tag_window = 0;
+
+    return 0;
+}
+
+int c_update(C_State * c_state, Tag_Array * tags, Zettel_Array * zets)
+{
+    char c = getch();
+
+    switch(c_state->fsm)
+    {
+        case TAG_CHOICE:
+            switch(c)
+            {
+                case 'j':
+                    c_state->cursor_y ++;
+                    if(c_state->cursor_y == c_state->sy)
+                    {
+                        c_state->cursor_y = c_state->sy-1;
+                        c_state->tag_window++;
+                        if(c_state->tag_window > tags->used-c_state->sy) c_state->tag_window = tags->used-c_state->sy;
+                    }
+                    break;
+
+                case 'k':
+                    c_state->cursor_y--;
+                    if(c_state->cursor_y == -1)
+                    {
+                        c_state->cursor_y = 0;
+                        c_state->tag_window --;
+                        if(c_state->tag_window == -1) c_state->tag_window = 0;
+                    }
+                    break;
+                case 'G':
+                    c_state->cursor_y = c_state->sy-1;
+                    c_state->tag_window = tags->used-c_state->sy;
+                    break;
+                case 'g':
+                    if(getch() == 'g')
+                    {
+                        c_state->cursor_y = 0;
+                        c_state->tag_window = 0;
+                    }
+                    break;
+                case '/':;
+                    char searchterm[64];
+                    mvgetnstr(10, 10, searchterm, 63);
+                    break;
+
+
+            }
+            break;
+    }
+
+    
+    if ( c == 'q' ) c_state->running = false;
+    return 0;
+}
+
+int c_render(C_State * c_state, Tag_Array * tags, Zettel_Array * zets)
+{
+    clear();
+    switch(c_state->fsm)
+    {
+        case TAG_CHOICE:
+            mvaddstr(c_state->cursor_y, 0, "=>");
+            for(int y = 0; y < tags->used; y++)
+            {
+                mvaddstr(y-c_state->tag_window, 2, tags->array[y]->title);
+            }
+            break;
+    }
+    refresh();
+    return 0;
+}
+
+int c_exit()
+{
+    endwin();
+    return 0;
+}
+int interactive()
+{
+    printf("prepare for interactive mode!");
+    Tag_Array tags;
+    Zettel_Array zets;
+    init_tags(&tags, 1);
+    init_zettels(&zets, 1);
+    read_zettel_from_folder(&tags, &zets, zettelkasten_path);
+
+    C_State c_state;
+    c_init(&c_state);
+    while(c_state.running)
+    {
+        c_render(&c_state, &tags, &zets);
+        c_update(&c_state, &tags, &zets);
+    }
+    c_exit();
+
+}
+
 int main(int argc, char * argv[])
-{ 
+{
+
+    Cini * cini = cini_init();
+
+    {
+        char settings_folder[1000];
+        const char *homedir;
+        if ((homedir = getenv("HOME")) == NULL) {
+            homedir = getpwuid(getuid())->pw_dir;
+        }
+        strcpy(settings_folder, homedir);
+        strcpy(settings_folder+strlen(settings_folder), "/.config/zk/zk.conf");
+        cini_read(settings_folder, cini);
+    }
+    zettelkasten_path = cini_get("general", "zkpath", cini);
+    editor_command = cini_get("general", "editor_command", cini);
+
+
+
     char command[42];
     char tag_str[200];
     if(argc < 2)
@@ -454,5 +608,11 @@ int main(int argc, char * argv[])
         printf("\n");
         print_zettel(&zets);
     }
+    else if(strcmp(command, "interactive") == 0)
+    {
+        interactive();
+    }
+
+    cini_free(cini);
     return 0;
 }

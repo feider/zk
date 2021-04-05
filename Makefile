@@ -1,7 +1,10 @@
 INSTALLPATH=/usr/bin
 
-zk: main.c config.h
-	gcc main.c -o zk
+
+libs=-lncurses
+
+zk: main.c config.h cinireader.c cinireader.h
+	gcc main.c cinireader.c $(libs) -o zk
 
 install: zk
 	cp zk $(INSTALLPATH)/zk

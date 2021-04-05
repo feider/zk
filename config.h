@@ -1,7 +1,5 @@
-
-
 // this stores the Zettel/notes
-char zettelkasten_path[] = "/path/to/your/zk/notes"; // this should exist!
-char editor_command[] = {"/bin/alacritty -e nvim"}; // your preferred editor
+const char * zettelkasten_path;
+const char * editor_command;
 
 #define MAX_NOTE_SIZE 5000
