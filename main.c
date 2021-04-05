@@ -4,7 +4,9 @@
 #include <time.h>
 #include <string.h>
 #include <stdint.h>
-#include <ncurses.h>
+#include <curses.h>
+#include <locale.h>
+#include <wchar.h>
 
 #include <pwd.h>
 #include <unistd.h>
@@ -470,6 +472,10 @@ int c_render(C_State * c_state, Tag_Array * tags, Zettel_Array * zets)
             mvaddstr(c_state->cursor_y, 0, "=>");
             for(int y = 0; y < tags->used; y++)
             {
+                wchar_t tag[100];
+                swprintf(tag, 100, L"%hs", tags->array[y]->title);
+
+                //mvaddwstr(y-c_state->tag_window, 2, tag);
                 mvaddstr(y-c_state->tag_window, 2, tags->array[y]->title);
             }
             break;
@@ -486,6 +492,7 @@ int c_exit()
 int interactive()
 {
     printf("prepare for interactive mode!");
+
     Tag_Array tags;
     Zettel_Array zets;
     init_tags(&tags, 1);
@@ -518,6 +525,12 @@ int main(int argc, char * argv[])
         strcpy(settings_folder+strlen(settings_folder), "/.config/zk/zk.conf");
         cini_read(settings_folder, cini);
     }
+
+    
+    setlocale(LC_ALL, "");
+
+        
+
     zettelkasten_path = cini_get("general", "zkpath", cini);
     editor_command = cini_get("general", "editor_command", cini);
 
