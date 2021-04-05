@@ -24,9 +24,11 @@
 #define false 0
 
 
-int print_zettel_folder(){ DIR *d; struct dirent *dir;
+int print_zettel_folder() {
+    DIR *d;
+    struct dirent *dir;
     d = opendir(zettelkasten_path);
-    if(d){
+    if(d) {
         while( (dir = readdir(d)) != NULL ) {
             if(dir->d_name[0] != '.')
                 printf("%s\n", dir->d_name);
@@ -41,14 +43,14 @@ int print_zettel_folder(){ DIR *d; struct dirent *dir;
     return 0;
 }
 
-int add_zettel(){
+int add_zettel() {
     // get new zettel name by time and date
     time_t rawtime;
     struct tm * timeinfo;
     char zettel_name[20];
     time(&rawtime);
     timeinfo = localtime(&rawtime);
-strftime(zettel_name, 20, "%Y_%m_%d_%H_%M_%S", timeinfo);
+    strftime(zettel_name, 20, "%Y_%m_%d_%H_%M_%S", timeinfo);
     printf("%s\n", zettel_name);
     char * full_command = malloc(strlen(editor_command) + 1 + strlen(zettelkasten_path) + 1 + strlen(zettel_name) + 1);
     full_command[0] = 0;
@@ -72,8 +74,8 @@ strftime(zettel_name, 20, "%Y_%m_%d_%H_%M_%S", timeinfo);
         printf("failed to create new zettel\n");
         exit(1);
     }
-    
-    while(fgets(result, sizeof(result), execute) != NULL){
+
+    while(fgets(result, sizeof(result), execute) != NULL) {
         printf("%s", result);
     }
     pclose(execute);
@@ -206,7 +208,7 @@ size_t append_zettel(Zettel_Array * zettels, const char * text)
 void tag_zettel(Tag_Array * tags, Zettel_Array * zets, size_t tag_id, size_t zettel_id)
 {
     Tag * tag = tags->array[tag_id];
-    if (tag->num_zettel == tag->max_zettel){
+    if (tag->num_zettel == tag->max_zettel) {
         tag->max_zettel *= 2;
         tag->zettel = (size_t*) realloc(tag->zettel, tag->max_zettel * sizeof(size_t));
     }
@@ -214,7 +216,7 @@ void tag_zettel(Tag_Array * tags, Zettel_Array * zets, size_t tag_id, size_t zet
     tag->num_zettel ++;
 
     Zettel * zet = zets->array[zettel_id];
-    if(zet->num_tags == zet->max_tags){
+    if(zet->num_tags == zet->max_tags) {
         zet->max_tags *= 2;
         zet->tags = (size_t*) realloc(zet->tags, zet->max_tags * sizeof(size_t));
     }
@@ -274,7 +276,7 @@ void read_zettel(Tag_Array * tags, Zettel_Array * zets, const char * fullfile)
             tag = find_tag(tags, zettel_content);
         }
         tag_zettel(tags, zets, tag, zet);
-        
+
     }
     fclose(fp);
 }
@@ -289,9 +291,9 @@ void read_zettel_from_folder(Tag_Array * tags, Zettel_Array * zets, const char *
 
     // count the number of existing zettels
     d = opendir(zettelkasten_path);
-    if(d){
+    if(d) {
         while( (dir = readdir(d)) != NULL ) {
-            if(dir->d_name[0] != '.'){
+            if(dir->d_name[0] != '.') {
                 zets_in_folder ++;
             }
         }
@@ -304,12 +306,12 @@ void read_zettel_from_folder(Tag_Array * tags, Zettel_Array * zets, const char *
     }
 
     zet_names = (char **) malloc(zets_in_folder * sizeof(char*));
-    
+
     //actually read the zettel names
     d = opendir(zettelkasten_path);
-    if(d){
+    if(d) {
         while( (dir = readdir(d)) != NULL ) {
-            if(dir->d_name[0] != '.'){
+            if(dir->d_name[0] != '.') {
                 zet_names[current_zet] = (char*) malloc((strlen(dir->d_name)+1)*sizeof(char));
                 strcpy(zet_names[current_zet], dir->d_name);
                 current_zet++;
@@ -324,7 +326,7 @@ void read_zettel_from_folder(Tag_Array * tags, Zettel_Array * zets, const char *
     }
 
     // load the zettel
-    // TODO Optimize, move malloc and free out of for loop 
+    // TODO Optimize, move malloc and free out of for loop
     for(size_t i = 0; i<zets_in_folder; i++)
     {
         char * fullpath = malloc((strlen(folder) + 1 + strlen(zet_names[i] + 1)) * sizeof(char));
@@ -332,7 +334,7 @@ void read_zettel_from_folder(Tag_Array * tags, Zettel_Array * zets, const char *
         strcat(fullpath, folder);
         strcat(fullpath, "/");
         strcat(fullpath, zet_names[i]);
-        
+
         read_zettel(tags, zets, fullpath);
 
         free(fullpath);
@@ -345,7 +347,7 @@ void read_zettel_from_folder(Tag_Array * tags, Zettel_Array * zets, const char *
         free(zet_names[i]);
     }
     free(zet_names);
-} 
+}
 
 void browse_tag(Tag_Array * tags, Zettel_Array * zets, const char * tag_str)
 {
@@ -386,12 +388,13 @@ typedef enum
     TAG_CHOICE
 } C_Fsm;
 
-typedef struct{
+typedef struct {
     int running;
     int sx, sy;
     C_Fsm fsm;
     int cursor_y;
     int tag_window;
+    int chosen_tag;
 
 } C_State;
 
@@ -404,6 +407,7 @@ int c_init(C_State * c_state)
     c_state->fsm = TAG_CHOICE;
     c_state->cursor_y = 0;
     c_state->tag_window = 0;
+    c_state->chosen_tag = -1;
 
     return 0;
 }
@@ -414,50 +418,59 @@ int c_update(C_State * c_state, Tag_Array * tags, Zettel_Array * zets)
 
     switch(c_state->fsm)
     {
-        case TAG_CHOICE:
-            switch(c)
+    case TAG_CHOICE:
+        switch(c)
+        {
+        case 'j':
+            c_state->cursor_y ++;
+            if(c_state->cursor_y == c_state->sy)
             {
-                case 'j':
-                    c_state->cursor_y ++;
-                    if(c_state->cursor_y == c_state->sy)
-                    {
-                        c_state->cursor_y = c_state->sy-1;
-                        c_state->tag_window++;
-                        if(c_state->tag_window > tags->used-c_state->sy) c_state->tag_window = tags->used-c_state->sy;
-                    }
-                    break;
-
-                case 'k':
-                    c_state->cursor_y--;
-                    if(c_state->cursor_y == -1)
-                    {
-                        c_state->cursor_y = 0;
-                        c_state->tag_window --;
-                        if(c_state->tag_window == -1) c_state->tag_window = 0;
-                    }
-                    break;
-                case 'G':
-                    c_state->cursor_y = c_state->sy-1;
-                    c_state->tag_window = tags->used-c_state->sy;
-                    break;
-                case 'g':
-                    if(getch() == 'g')
-                    {
-                        c_state->cursor_y = 0;
-                        c_state->tag_window = 0;
-                    }
-                    break;
-                case '/':;
-                    char searchterm[64];
-                    mvgetnstr(10, 10, searchterm, 63);
-                    break;
-
-
+                c_state->cursor_y = c_state->sy-1;
+                c_state->tag_window++;
+                if(c_state->tag_window > tags->used-c_state->sy) c_state->tag_window = tags->used-c_state->sy;
             }
             break;
+
+        case 'k':
+            c_state->cursor_y--;
+            if(c_state->cursor_y == -1)
+            {
+                c_state->cursor_y = 0;
+                c_state->tag_window --;
+                if(c_state->tag_window == -1) c_state->tag_window = 0;
+            }
+            break;
+        case 'G':
+            c_state->cursor_y = c_state->sy-1;
+            c_state->tag_window = tags->used-c_state->sy;
+            break;
+        case 'g':
+            if(getch() == 'g')
+            {
+                c_state->cursor_y = 0;
+                c_state->tag_window = 0;
+            }
+            break;
+        case '/':
+            ;
+            char searchterm[64];
+            mvgetnstr(10, 10, searchterm, 63);
+            break;
+        case 10:
+            endwin();
+            c_state->chosen_tag = c_state->cursor_y+c_state->tag_window;
+            printf("%s\n", tags->array[c_state->chosen_tag]->title);
+            browse_tag(tags, zets, tags->array[c_state->chosen_tag]->title);
+            exit(0);
+            break;
+
+
+        }
+
+        break;
     }
 
-    
+
     if ( c == 'q' ) c_state->running = false;
     return 0;
 }
@@ -467,13 +480,13 @@ int c_render(C_State * c_state, Tag_Array * tags, Zettel_Array * zets)
     clear();
     switch(c_state->fsm)
     {
-        case TAG_CHOICE:
-            mvaddstr(c_state->cursor_y, 0, "=>");
-            for(int y = 0; y < tags->used; y++)
-            {
-                mvaddstr(y-c_state->tag_window, 2, tags->array[y]->title);
-            }
-            break;
+    case TAG_CHOICE:
+        mvaddstr(c_state->cursor_y, 0, "=>");
+        for(int y = 0; y < tags->used; y++)
+        {
+            mvaddstr(y-c_state->tag_window, 2, tags->array[y]->title);
+        }
+        break;
     }
     refresh();
     return 0;
@@ -521,10 +534,10 @@ int main(int argc, char * argv[])
         cini_read(settings_folder, cini);
     }
 
-    
+
     setlocale(LC_ALL, "");
 
-        
+
 
     zettelkasten_path = cini_get("general", "zkpath", cini);
     editor_command = cini_get("general", "editor_command", cini);
